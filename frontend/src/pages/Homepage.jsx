@@ -1,11 +1,8 @@
-import React from 'react'
+import React from "react";
+import { Navigate } from "react-router-dom";
 
 function Homepage() {
-  return (
-    <div>
-      This is the home page
-    </div>
-  )
+  return <Navigate to="/buyers" replace />;
 }
 
-export default Homepage
+export default Homepage;

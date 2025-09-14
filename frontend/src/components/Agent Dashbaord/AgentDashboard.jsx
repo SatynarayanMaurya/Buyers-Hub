@@ -1,9 +1,16 @@
 import React, { useState } from "react";
 import { motion } from "framer-motion";
 import { Users, PlusCircle, FileText, Activity, Filter, Download, Upload } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 export default function AgentDashboard() {
   const [search, setSearch] = useState("");
+  const navigate = useNavigate()
+
+  const viewOrEditBuyer = (buyer)=>{
+    console.log("Buyer : ",buyer)
+    navigate(`/buyers/${buyer?._id}`,{state:buyer})
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 p-6">
@@ -67,7 +74,7 @@ export default function AgentDashboard() {
 
         {/* Buttons */}
         <div className="flex gap-2">
-          <button className="flex items-center gap-1 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">
+          <button onClick={()=>navigate("/buyers/new")} className="flex items-center gap-1 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">
             <PlusCircle size={18} /> Add Buyer
           </button>
           <button className="flex items-center gap-1 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700">
@@ -130,8 +137,8 @@ export default function AgentDashboard() {
             </thead>
             <tbody>
               {[
-                { name: "Amit Sharma", phone: "9876543210", city: "Chandigarh", property: "Apartment", budget: "30L–40L", timeline: "0-3m", status: "New", updatedAt: "2025-09-10" },
-                { name: "Priya Verma", phone: "9988776655", city: "Mohali", property: "Villa", budget: "50L–70L", timeline: "3-6m", status: "Contacted", updatedAt: "2025-09-09" },
+                {_id:123, fullName: "Amit Sharma", phone: "9876543210", city: "Chandigarh", property: "Apartment",budgetMin:"300000",budgetMax:"400000", budget: "30L–40L", timeline: "0-3m", status: "New", updatedAt: "2025-09-10" },
+                {_id:124, fullName: "Priya Verma", phone: "9988776655", city: "Mohali", property: "Villa",budgetMin:"500000",budgetMax:"700000", timeline: "3-6m", status: "Contacted", updatedAt: "2025-09-09" },
               ].map((buyer, i) => (
                 <motion.tr
                   key={i}
@@ -140,11 +147,11 @@ export default function AgentDashboard() {
                   transition={{ delay: i * 0.2 }}
                   className="border-b hover:bg-gray-50 transition"
                 >
-                  <td className="p-3">{buyer.name}</td>
+                  <td className="p-3">{buyer.fullName}</td>
                   <td className="p-3">{buyer.phone}</td>
                   <td className="p-3">{buyer.city}</td>
                   <td className="p-3">{buyer.property}</td>
-                  <td className="p-3">{buyer.budget}</td>
+                  <td className="p-3">{buyer.budgetMin}-{buyer.budgetMax}</td>
                   <td className="p-3">{buyer.timeline}</td>
                   <td className="p-3">
                     <span className="px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-600">
@@ -152,8 +159,8 @@ export default function AgentDashboard() {
                     </span>
                   </td>
                   <td className="p-3">{buyer.updatedAt}</td>
-                  <td className="p-3">
-                    <button className="text-blue-600 hover:underline">View / Edit</button>
+                  <td onClick={()=>viewOrEditBuyer(buyer)} className="p-3">
+                    <button className="text-blue-600 hover:underline cursor-pointer">View / Edit</button>
                   </td>
                 </motion.tr>
               ))}

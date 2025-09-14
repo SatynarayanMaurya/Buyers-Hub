@@ -6,7 +6,7 @@ import { signupSchema } from "../validation/userSchemas";
 
 export default function Signup() {
   const [formData, setFormData] = useState({
-    name: "",
+    fullName: "",
     email: "",
     phone: "",
     password: "",
@@ -97,15 +97,15 @@ export default function Signup() {
             <label className="block text-sm font-medium mb-1">Full Name</label>
             <input
               type="text"
-              name="name"
-              value={formData.name}
+              name="fullName"
+              value={formData.fullName}
               onChange={handleChange}
               className={`w-full border ${
                 errors.fullName ? "border-red-500" : "border-gray-300"
               } rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500`}
               placeholder="John Doe"
             />
-            {errors.name && (
+            {errors.fullName && (
               <p className="text-red-500 text-sm mt-1">{errors.fullName}</p>
             )}
           </motion.div>

@@ -1,22 +1,26 @@
 import React, { useState } from "react";
+import { useLocation, useParams } from "react-router-dom";
 import {toast} from "react-toastify"
 
-const AddBuyerForm = () => {
+const UpdateBuyerForm = () => {
+  const location = useLocation()
+  const buyerDetails = location.state
+  console.log("buyer details : ",buyerDetails)
   const [formData, setFormData] = useState({
-    fullName: "",
-    email: "",
-    phone: "",
-    city: "Chandigarh",
-    propertyType: "Apartment",
-    bhk: "",
-    purpose: "Buy",
-    budgetMin: "",
-    budgetMax: "",
-    timeline: "0-3m",
-    source: "Website",
-    status: "New",
-    notes: "",
-    tags: "",
+    fullName: buyerDetails?.fullName || "",
+    email: buyerDetails?.email || "",
+    phone:  buyerDetails?.phone || "",
+    city:  buyerDetails?.city || "Chandigarh",
+    propertyType: buyerDetails?.propertyType || "Apartment",
+    bhk:  buyerDetails?.bhk || "",
+    purpose:  buyerDetails?.purpose || "Buy",
+    budgetMin:  buyerDetails?.budgetMin || "",
+    budgetMax:  buyerDetails?.budgetMax || "",
+    timeline:  buyerDetails?.timeline || "0-3m",
+    source: buyerDetails?.source || "Website",
+    status: buyerDetails?.status || "New",
+    notes:  buyerDetails?.notes || "",
+    tags:  buyerDetails?.tags || "",
   });
 
 const handleChange = (e) => {
@@ -446,4 +450,4 @@ const handleChange = (e) => {
   );
 };
 
-export default AddBuyerForm;
+export default UpdateBuyerForm;
