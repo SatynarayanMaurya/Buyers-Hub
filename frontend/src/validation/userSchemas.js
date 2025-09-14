@@ -14,8 +14,16 @@ export const signupSchema = z.object({
   password: z.string().min(6, "Password must be at least 6 characters"),
 });
 
-// Login validation
 export const loginSchema = z.object({
-  email: z.string().email("Invalid email"),
+  emailOrPhone: z.string().refine(
+    (val) => {
+      const isEmail = z.string().email().safeParse(val).success;
+      const isPhone = /^\d{10,15}$/.test(val); // phone 10–15 digits
+      return isEmail || isPhone;
+    },
+    {
+      message: "Enter a valid email or phone number",
+    }
+  ),
   password: z.string().min(6, "Password must be at least 6 characters"),
 });

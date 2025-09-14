@@ -2,12 +2,22 @@ import React, { useState } from "react";
 import { motion } from "framer-motion";
 import { z } from "zod";
 import { loginSchema } from "../validation/userSchemas";
+import {toast} from "react-toastify"
+import { apiConnector } from "../services/apiConnector";
+import { authEndpoints } from "../services/apis";
+import {useNavigate} from "react-router-dom"
+import Spinner from "../components/Spinner";
+import { useDispatch, useSelector } from "react-redux";
+import { setLoading } from "../redux/userSlice";
 
-// 🔹 Define schema
 export default function Login() {
+
+  const navigate = useNavigate();
+  const loading = useSelector((state)=>state.user.loading)
+  const dispatch = useDispatch()
   const [formData, setFormData] = useState({
-    email: "",
     password: "",
+    emailOrPhone:""
   });
 
   const [errors, setErrors] = useState({}); // store field errors
@@ -19,13 +29,14 @@ export default function Login() {
       [name]: value,
     }));
 
-    // 🔹 Live validation cleanup: clear error when field becomes valid
-    if (name === "email") {
-      if (z.string().email().safeParse(value).success) {
-        const { email, ...rest } = errors;
+    if (name === "emailOrPhone") {
+      const { success } = loginSchema.shape.emailOrPhone.safeParse(value);
+      if (success) {
+        const { emailOrPhone, ...rest } = errors;
         setErrors(rest);
       }
     }
+
     if (name === "password") {
       if (value.length >= 6) {
         const { password, ...rest } = errors;
@@ -34,7 +45,7 @@ export default function Login() {
     }
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit =async (e) => {
     e.preventDefault();
 
     const result = loginSchema.safeParse(formData);
@@ -48,12 +59,23 @@ export default function Login() {
       return;
     }
 
-    console.log("✅ Login Data:", formData);
-    alert("Check console for submitted login data 🚀");
+    try{
+      dispatch(setLoading(true))
+      const result = await apiConnector("POST",authEndpoints.LOGIN,formData)
+      dispatch(setLoading(false))
+      console.log("result : ",result?.data)
+      toast.success(result?.data?.message)
+    }
+    catch(error){
+      console.log("Error in login : ",error)
+      toast.error(error?.response?.data?.message?.[0]?.message || error?.response?.data?.message || error.message || "Error in login ")
+      dispatch(setLoading(false))
+    }
   };
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-100 via-indigo-200 to-purple-200 p-4">
+      {loading && <Spinner/>}
       <motion.div
         initial={{ opacity: 0, y: 60 }}
         animate={{ opacity: 1, y: 0 }}
@@ -78,19 +100,19 @@ export default function Login() {
               Email
             </label>
             <input
-              type="email"
-              name="email"
-              value={formData.email}
+              type="text"
+              name="emailOrPhone"
+              value={formData.emailOrPhone}
               onChange={handleChange}
               className={`w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 transition ${
-                errors.email
+                errors.emailOrPhone
                   ? "border-red-500 focus:ring-red-400"
                   : "border-gray-300 focus:ring-indigo-500"
               }`}
               placeholder="you@example.com"
             />
-            {errors.email && (
-              <p className="text-sm text-red-500 mt-1">{errors.email}</p>
+            {errors.emailOrPhone && (
+              <p className="text-sm text-red-500 mt-1">{errors.emailOrPhone}</p>
             )}
           </motion.div>
 
@@ -135,7 +157,7 @@ export default function Login() {
           className="text-sm text-gray-600 mt-6 text-center"
         >
           Don’t have an account?{" "}
-          <span className="text-indigo-600 font-medium hover:underline cursor-pointer">
+          <span onClick={()=>navigate("/signup")} className="text-indigo-600 font-medium hover:underline cursor-pointer">
             Sign up
           </span>
         </motion.p>

@@ -1,10 +1,15 @@
 import React, { useState } from "react";
 import { motion } from "framer-motion";
-// import { z } from "zod";
+import {toast} from "react-toastify"
 import { signupSchema } from "../validation/userSchemas";
+import { apiConnector } from "../services/apiConnector";
+import { authEndpoints } from "../services/apis";
+import { useNavigate } from "react-router-dom";
 
 
 export default function Signup() {
+
+  const navigate = useNavigate();
   const [formData, setFormData] = useState({
     fullName: "",
     email: "",
@@ -45,7 +50,7 @@ export default function Signup() {
   };
 
 
-  const handleSubmit = (e) => {
+  const handleSubmit =async (e) => {
     e.preventDefault();
 
     const result = signupSchema.safeParse(formData);
@@ -62,10 +67,14 @@ export default function Signup() {
     setErrors({});
 
     try{
-      console.log("✅ Signup Data:", formData);
+      const result = await apiConnector("POST",authEndpoints.SIGN_UP,formData)
+      toast.success(result?.data?.message)
+      console.log("Result : ",result)
+
 
     }
     catch(error){
+      toast.error(error?.response?.data?.message?.[0]?.message || error?.response?.data?.message || error?.message || "Error while signup") 
       console.log("Error in signup : ",error)
     }
   };
@@ -186,6 +195,19 @@ export default function Signup() {
             Sign Up
           </motion.button>
         </form>
+
+        {/* Footer */}
+        <motion.p
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.8 }}
+          className="text-sm text-gray-600 mt-6 text-center"
+        >
+          Already have an account?{" "}
+          <span onClick={()=>navigate("/login")} className="text-indigo-600 font-medium hover:underline cursor-pointer">
+            Login
+          </span>
+        </motion.p>
       </motion.div>
     </div>
   );
