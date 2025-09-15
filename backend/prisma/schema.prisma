@@ -31,25 +31,14 @@ enum PropertyType {
   Retail
 }
 
-enum BHK {
-  Studio
-  One
-  Two
-  Three
-  Four
-}
+
 
 enum Purpose {
   Buy
   Rent
 }
 
-enum Timeline {
-  three_months
-  six_months
-  more_than_6m
-  exploring
-}
+
 
 enum Source {
   Website
@@ -92,11 +81,11 @@ model Buyer {
   phone        String
   city         City
   propertyType PropertyType
-  bhk          BHK?
+  bhk          String?
   purpose      Purpose
   budgetMin    Int?
   budgetMax    Int?
-  timeline     Timeline
+  timeline     String
   source       Source
   status       Status   @default(New)
   notes        String?  @db.Text

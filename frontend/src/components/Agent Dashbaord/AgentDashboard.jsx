@@ -1,28 +1,90 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { Users, PlusCircle, FileText, Activity, Filter, Download, Upload } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { useDispatch, useSelector } from "react-redux";
+import { toast } from "react-toastify";
+import { setAllBuyers, setLoading, setUserDetails } from "../../redux/userSlice";
+import { apiConnector } from "../../services/apiConnector";
+import { agentEndpoints, buyerEndpoints } from "../../services/apis";
 
 export default function AgentDashboard() {
   const [search, setSearch] = useState("");
   const navigate = useNavigate()
+  const userDetails = useSelector((state)=>state.user.userDetails)
+  const loading = useSelector((state)=>state.user.loading)
+  const dispatch = useDispatch()
+  const allBuyers = useSelector((state)=>state.user.allBuyers)
 
   const viewOrEditBuyer = (buyer)=>{
-    console.log("Buyer : ",buyer)
     navigate(`/buyers/${buyer?._id}`,{state:buyer})
   }
 
+  const getUserDetails = async()=>{
+    try{
+      if(userDetails) return ;
+      dispatch(setLoading(true))
+      const result = await apiConnector("GET",agentEndpoints.GET_USER_DETAILS)
+      dispatch(setUserDetails(result?.data?.userDetails))
+      toast.success(result?.data?.message)
+    }
+    catch(error){
+      toast.error(error?.response?.data?.message || error.message || "Error in getting the agent details")
+    }
+    finally{
+      dispatch(setLoading(false))
+
+    }
+  }
+
+  const getAllBuyers = async()=>{
+    try{
+      if(allBuyers) return ;
+      dispatch(setLoading(true))
+      const result = await apiConnector("GET",buyerEndpoints.GET_ALL_BUYERS)
+      dispatch(setAllBuyers(result?.data?.allBuyers))
+      dispatch(setLoading(false))
+    }
+    catch(error){
+      console.log("Error in getting all the buyers : ",error)
+      dispatch(setLoading(false))
+      toast.error(error?.response?.data?.message || error.message || "Error in getting all the buyers")
+    }
+  }
+
+  useEffect(()=>{
+    getAllBuyers();
+    getUserDetails()
+  },[])
+
   return (
     <div className="min-h-screen bg-gray-50 p-6">
-      {/* Page Title */}
-      <motion.h1
+
+      <motion.div
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
-        className="text-3xl font-bold mb-6 text-gray-800"
+        className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6"
       >
-        Agent Dashboard
-      </motion.h1>
+        {/* Dashboard Title */}
+        <h1 className="text-3xl font-bold text-gray-800 mb-4 md:mb-0">
+          Agent Dashboard
+        </h1>
+
+        {/* User Info */}
+        <div className="flex flex-col md:flex-row items-start md:items-center gap-2 md:gap-6 text-gray-700 text-sm">
+          <span>
+            <strong>Agent:</strong> {userDetails?.fullName || "John Doe"}
+          </span>
+          <span>
+            <strong>Email:</strong> {userDetails?.email || "johndoe@example.com"}
+          </span>
+          <span>
+            <strong>Phone:</strong> {userDetails?.phone || "*******4763"}
+          </span>
+        </div>
+      </motion.div>
+
 
       {/* Top Actions */}
       <div className="flex flex-wrap gap-3 items-center justify-between mb-6">
@@ -127,19 +189,17 @@ export default function AgentDashboard() {
                 <th className="p-3 font-medium text-gray-700">Name</th>
                 <th className="p-3 font-medium text-gray-700">Phone</th>
                 <th className="p-3 font-medium text-gray-700">City</th>
-                <th className="p-3 font-medium text-gray-700">Property</th>
+                <th className="p-3 font-medium text-gray-700">Property Type</th>
                 <th className="p-3 font-medium text-gray-700">Budget</th>
                 <th className="p-3 font-medium text-gray-700">Timeline</th>
+                <th className="p-3 font-medium text-gray-700">Purpose</th>
                 <th className="p-3 font-medium text-gray-700">Status</th>
                 <th className="p-3 font-medium text-gray-700">UpdatedAt</th>
                 <th className="p-3 font-medium text-gray-700">Action</th>
               </tr>
             </thead>
             <tbody>
-              {[
-                {_id:123, fullName: "Amit Sharma", phone: "9876543210", city: "Chandigarh", property: "Apartment",budgetMin:"300000",budgetMax:"400000", budget: "30L–40L", timeline: "0-3m", status: "New", updatedAt: "2025-09-10" },
-                {_id:124, fullName: "Priya Verma", phone: "9988776655", city: "Mohali", property: "Villa",budgetMin:"500000",budgetMax:"700000", timeline: "3-6m", status: "Contacted", updatedAt: "2025-09-09" },
-              ].map((buyer, i) => (
+              {allBuyers?.map((buyer, i) => (
                 <motion.tr
                   key={i}
                   initial={{ opacity: 0, x: -20 }}
@@ -150,9 +210,10 @@ export default function AgentDashboard() {
                   <td className="p-3">{buyer.fullName}</td>
                   <td className="p-3">{buyer.phone}</td>
                   <td className="p-3">{buyer.city}</td>
-                  <td className="p-3">{buyer.property}</td>
+                  <td className="p-3">{buyer.propertyType}</td>
                   <td className="p-3">{buyer.budgetMin}-{buyer.budgetMax}</td>
                   <td className="p-3">{buyer.timeline}</td>
+                  <td className="p-3">{buyer.purpose}</td>
                   <td className="p-3">
                     <span className="px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-600">
                       {buyer.status}

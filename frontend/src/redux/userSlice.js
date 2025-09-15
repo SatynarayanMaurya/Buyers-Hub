@@ -1,9 +1,11 @@
 import {createSlice} from "@reduxjs/toolkit"
+import { act } from "react";
 
 
 const initialState = {
     loading :false,
-    userDetails:null
+    userDetails:null,
+    allBuyers:null
 }
 
 
@@ -21,10 +23,16 @@ const userSlice = createSlice({
 
         clearUserDetails :(state,action)=>{
             state.userDetails = null
+        },
+        setAllBuyers:(state,action)=>{
+            state.allBuyers= action.payload
+        },
+        clearAllBuyers :(state,action)=>{
+            state.allBuyers = null
         }
     }
 })
 
 
-export const {setLoading,setUserDetails,clearUserDetails} = userSlice.actions;
+export const {setLoading,setUserDetails,clearUserDetails,setAllBuyers,clearAllBuyers} = userSlice.actions;
 export default userSlice.reducer;

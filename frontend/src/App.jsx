@@ -7,6 +7,7 @@ import AddBuyerForm from './components/Agent Dashbaord/AddBuyerForm'
 import UpdateBuyerForm from "./components/Agent Dashbaord/UpdateBuyerForm"
 
 import Homepage from "./pages/Homepage"
+import PrivateRoute from './components/PrivateRoute'
 function App() {
   return (
     <div >
@@ -14,7 +15,7 @@ function App() {
         <Route path='/login' element={<Login/>}/>
         <Route path='/signup' element={<Signup/>}/>
         <Route path='/' element={<Homepage/>}/>
-        <Route path='/buyers' element={<AgentDashboard/>}/>
+        <Route path='/buyers' element={<PrivateRoute><AgentDashboard/></PrivateRoute>}/>
         <Route path='/buyers/:id' element={<UpdateBuyerForm/>}/>
         <Route path='/buyers/new' element={<AddBuyerForm/>}/>
       </Routes>

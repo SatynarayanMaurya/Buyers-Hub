@@ -1,7 +1,13 @@
 import React, { useState } from "react";
 import {toast} from "react-toastify"
+import {useDispatch, useSelector} from "react-redux"
+import { setLoading } from "../../redux/userSlice";
+import { apiConnector } from "../../services/apiConnector";
+import { buyerEndpoints } from "../../services/apis";
 
 const AddBuyerForm = () => {
+  const loading = useSelector((state)=>state.user.loading)
+  const dispatch = useDispatch()
   const [formData, setFormData] = useState({
     fullName: "",
     email: "",
@@ -10,8 +16,8 @@ const AddBuyerForm = () => {
     propertyType: "Apartment",
     bhk: "",
     purpose: "Buy",
-    budgetMin: "",
-    budgetMax: "",
+    budgetMin: 0,
+    budgetMax: 0,
     timeline: "0-3m",
     source: "Website",
     status: "New",
@@ -33,7 +39,8 @@ const handleChange = (e) => {
 
 
   const [errors, setErrors] = useState({});
-  const handleSubmit = (e) => {
+
+  const handleSubmit =async (e) => {
     e.preventDefault();
 
     const newErrors = {};
@@ -63,13 +70,20 @@ const handleChange = (e) => {
       return;
     }
 
-    console.log("New Buyer:", {
-      ...formData,
-      tags: formData.tags.split(",").map((tag) => tag.trim()),
-      updatedAt: new Date().toISOString(),
-    });
+    try{
+      dispatch(setLoading(true))
+      const response = await apiConnector("POST",buyerEndpoints.CREATE_BUYER,{...formData,tags: formData.tags.split(",").map((tag) => tag.trim()),
+      updatedAt: new Date().toISOString(),});
+      toast.success(response?.data?.message)
+      dispatch(setLoading(false))
+      
+    }
+    catch(error){
+      dispatch(setLoading(false))
+      console.log("Error in adding the new buyer : ",error)
+      toast.error(error?.response?.data?.message || error.message || "Error in adding the buyer")
+    }
 
-    toast.success("Buyer submitted! Check console.");
   };
 
   return (
@@ -284,7 +298,7 @@ const handleChange = (e) => {
                     value={formData.budgetMin}
                     onChange={handleChange}
                     className={`w-full border ${
-                        errors.fullName ? "border-red-500" : "border-gray-200"
+                        errors.budgetMin ? "border-red-500" : "border-gray-200"
                     } rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-blue-500`}
                         
                     />

@@ -2,7 +2,7 @@ import axios from "axios"
 
 
 export const axiosInstance = axios.create({
-    // withCredentials:true
+    withCredentials:true
 })
 
 export const apiConnector = (method,url,bodyData,header,params)=>{

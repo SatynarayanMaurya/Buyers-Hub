@@ -8,7 +8,7 @@ import { authEndpoints } from "../services/apis";
 import {useNavigate} from "react-router-dom"
 import Spinner from "../components/Spinner";
 import { useDispatch, useSelector } from "react-redux";
-import { setLoading } from "../redux/userSlice";
+import { setLoading, setUserDetails } from "../redux/userSlice";
 
 export default function Login() {
 
@@ -63,8 +63,10 @@ export default function Login() {
       dispatch(setLoading(true))
       const result = await apiConnector("POST",authEndpoints.LOGIN,formData)
       dispatch(setLoading(false))
-      console.log("result : ",result?.data)
+      localStorage?.setItem("token",result?.data?.token)
+      dispatch(setUserDetails(result?.data?.userDetails))
       toast.success(result?.data?.message)
+      navigate("/")
     }
     catch(error){
       console.log("Error in login : ",error)
