@@ -21,4 +21,7 @@ app.use("/api/buyers", buyerRoutes);
 app.use("/api/agent", agentRoute);
 
 const PORT = process.env.PORT || 4000;
+app.get("/",(req,res)=>{
+    res.send(`<h1>Hi from buyers hub</h1>`)
+})
 app.listen(PORT, () => console.log(`Server running on http://localhost:${PORT}`));
