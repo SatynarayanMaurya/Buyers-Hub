@@ -381,7 +381,7 @@ const handleChange = (e) => {
                   >
                     <option>Website</option>
                     <option>Referral</option>
-                    <option>Walk-in</option>
+                    <option>Walk_in</option>
                     <option>Call</option>
                     <option>Other</option>
                   </select>
