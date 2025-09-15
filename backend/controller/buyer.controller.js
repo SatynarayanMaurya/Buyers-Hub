@@ -55,20 +55,37 @@ export const createBuyer = async (req, res) => {
   }
 };
 
-// Get all Buyers (with filters later)
+
 export const getBuyers = async (req, res) => {
   try {
+    const page = parseInt(req.query.q) || 1;
+    const pageSize = parseInt(req.query.pageSize) || 10;
+
+    const skip = (page - 1) * pageSize;
+
     const buyers = await prisma.buyer.findMany({
+      skip,
+      take: pageSize,
       orderBy: { updatedAt: "desc" },
     });
-    res.status(200).json({allBuyers:buyers});
+
+    const totalCount = await prisma.buyer.count();
+
+    res.status(200).json({
+      buyers,
+      pagination: {
+        page,
+        pageSize,
+        totalCount,
+        totalPages: Math.ceil(totalCount / pageSize),
+      },
+    });
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ message:error.message ||  "Server error" });
+    console.error("Error fetching buyers:", error);
+    res.status(500).json({ message: error.message || "Server error" });
   }
 };
 
-// Get Buyer by ID
 export const getBuyerById = async (req, res) => {
   try {
     const { id } = req.params;
@@ -81,23 +98,77 @@ export const getBuyerById = async (req, res) => {
   }
 };
 
-// Update Buyer
+// export const updateBuyer = async (req, res) => {
+//   try {
+//     const { id } = req.params;
+//     const data = req.body;
+
+//     const buyer = await prisma.buyer.update({
+//       where: { id },
+//       data,
+//     });
+
+//     res.status(200).json({ message: "Buyer updated successfully", buyer });
+//   } catch (error) {
+//     console.error(error);
+//     res.status(500).json({ message: "Server error" });
+//   }
+// };
+
+
+// PUT /buyers/:id
 export const updateBuyer = async (req, res) => {
   try {
     const { id } = req.params;
-    const data = req.body;
+    const { updatedAt, ...data } = req.body; // frontend should send updatedAt hidden input
+    const userId = req.user?.id || "system"; // track who updated
 
-    const buyer = await prisma.buyer.update({
+    // 1. Find existing buyer
+    const existingBuyer = await prisma.buyer.findUnique({
       where: { id },
-      data,
     });
 
-    res.status(200).json({ message: "Buyer updated successfully", buyer });
+    if (!existingBuyer) {
+      return res.status(404).json({ message: "Buyer not found" });
+    }
+
+    const diff = {};
+    for (const key of Object.keys(data)) {
+      if (data[key] !== existingBuyer[key]) {
+        diff[key] = { old: existingBuyer[key], new: data[key] };
+      }
+    }
+
+    if (Object.keys(diff).length === 0) {
+      return res.status(200).json({ message: "No changes detected" });
+    }
+
+    // 4. Run update + history log in a transaction
+    const [updatedBuyer, history] = await prisma.$transaction([
+      prisma.buyer.update({
+        where: { id },
+        data,
+      }),
+      prisma.buyerHistory.create({
+        data: {
+          buyerId: existingBuyer.id,
+          changedBy: userId,
+          diff,
+        },
+      }),
+    ]);
+
+    res.status(200).json({
+      message: "Buyer updated successfully",
+      buyer: updatedBuyer,
+      history,
+    });
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: "Server error" });
+    console.error("Update Buyer Error:", error);
+    res.status(500).json({ message: error.message || "Server error" });
   }
 };
+
 
 // Delete Buyer
 export const deleteBuyer = async (req, res) => {
@@ -110,5 +181,24 @@ export const deleteBuyer = async (req, res) => {
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: "Server error" });
+  }
+};
+
+
+// GET /buyers/:id/history
+export const getBuyerHistory = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const history = await prisma.buyerHistory.findMany({
+      where: { buyerId: id },
+      orderBy: { changedAt: "desc" },
+      take: 5,
+    });
+
+    res.status(200).json({ history });
+  } catch (error) {
+    console.error("Get Buyer History Error:", error);
+    res.status(500).json({ message: error.message || "Server error" });
   }
 };

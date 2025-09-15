@@ -11,6 +11,7 @@ export const buyerEndpoints = {
     GET_ALL_BUYERS : BASE_URL + "/api/buyers/get-all-buyers",
     CREATE_BUYER : BASE_URL + "/api/buyers/create-buyer",
     UPDATE_BUYER : BASE_URL + "/api/buyers/update-buyer",
+    GET_BUYER_HISTORY : BASE_URL + "/api/buyers/get-buyer-history",
     EXPORT_CSV : BASE_URL + "/api/buyers/export-buyers",
     IMPORT_CSV : BASE_URL + "/api/buyers/import-buyers",
 

@@ -5,11 +5,16 @@ import { signupSchema } from "../validation/userSchemas";
 import { apiConnector } from "../services/apiConnector";
 import { authEndpoints } from "../services/apis";
 import { useNavigate } from "react-router-dom";
+import { useDispatch, useSelector } from "react-redux";
+import { setLoading } from "../redux/userSlice";
+import Spinner from "../components/Spinner";
 
 
 export default function Signup() {
 
   const navigate = useNavigate();
+  const dispatch = useDispatch();
+  const loading = useSelector((state)=>state.user.loading)
   const [formData, setFormData] = useState({
     fullName: "",
     email: "",
@@ -67,20 +72,24 @@ export default function Signup() {
     setErrors({});
 
     try{
+      dispatch(setLoading(true))
       const result = await apiConnector("POST",authEndpoints.SIGN_UP,formData)
       toast.success(result?.data?.message)
-      console.log("Result : ",result)
-
-
+      dispatch(setLoading(false))
+      navigate("/login",{state:{emailOrPhone:formData?.email,password:formData?.password}})
+      
+      
     }
     catch(error){
       toast.error(error?.response?.data?.message?.[0]?.message || error?.response?.data?.message || error?.message || "Error while signup") 
       console.log("Error in signup : ",error)
+      dispatch(setLoading(false))
     }
   };
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-100 to-blue-300 p-4">
+      {loading && <Spinner/>}
       <motion.div
         initial={{ opacity: 0, y: -50 }}
         animate={{ opacity: 1, y: 0 }}

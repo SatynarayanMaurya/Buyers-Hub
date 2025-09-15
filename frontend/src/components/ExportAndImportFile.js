@@ -19,3 +19,35 @@ export const exportCsv = async(filter={})=>{
         toast.error(error?.response?.data?.message || error.message || "Error in exporting the csv file")
     }
 }
+
+export const importCsv = async (file) => {
+  try {
+    if (!file) {
+      toast.error("Please select a file to upload");
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append("file", file);
+
+    const result = await apiConnector(
+      "POST",
+      buyerEndpoints.IMPORT_CSV,
+      formData,
+      { "Content-Type": "multipart/form-data" }
+    );
+
+    toast.success(result?.data?.message || "CSV imported successfully");
+    return result?.data;
+  } catch (error) {
+    console.error("Error importing CSV:", error);
+
+    if (error?.response?.status === 400 && error?.response?.data?.errors) {
+      toast.error("Some rows failed validation. Please check the table.");
+      return { errors: error.response.data.errors };
+    }
+
+    toast.error(error?.response?.data?.message || "Error importing CSV");
+    return null;
+  }
+};

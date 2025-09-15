@@ -4,11 +4,12 @@ import { Users, PlusCircle, FileText, Activity, Filter, Download, Upload } from 
 import { useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { toast } from "react-toastify";
-import { setAllBuyers, setLoading, setUserDetails } from "../../redux/userSlice";
+import { clearAllBuyers, setAllBuyers, setLoading, setPaginationData, setUserDetails } from "../../redux/userSlice";
 import { apiConnector } from "../../services/apiConnector";
 import { agentEndpoints, buyerEndpoints } from "../../services/apis";
 import Spinner from "../Spinner";
-import { exportCsv } from "../ExportAndImportFile";
+import { exportCsv, importCsv } from "../ExportAndImportFile";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 
 export default function AgentDashboard() {
   const [search, setSearch] = useState("");
@@ -17,11 +18,32 @@ export default function AgentDashboard() {
   const loading = useSelector((state)=>state.user.loading)
   const dispatch = useDispatch()
   const allBuyers = useSelector((state)=>state.user.allBuyers)
+  const [fetchAgain , setFetchAgain ] = useState(false)
+  const [page,setPage] = useState(1);
+  const [pageSize,setPageSize] = useState(10)
+  const paginationData = useSelector((state)=>state.user.paginationData)
 
   const [city,setCity] = useState("")
   const [propertyType,setPropertyType] = useState("")
   const [status,setStatus] = useState("")
   const [timeline, setTimeline] = useState("")
+  
+   const handleImport = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    try{
+      dispatch(setLoading(true))
+      const response = await importCsv(file);
+      dispatch(setLoading(false))
+      dispatch(clearAllBuyers())
+      setFetchAgain(!fetchAgain)
+    }
+    catch(error){
+      dispatch(setLoading(false))
+      console.log("Error in importing the file")
+    }
+  };
 
   const [filteredBuyers, setFilteredBuyers] = useState([])
 
@@ -46,10 +68,6 @@ export default function AgentDashboard() {
   }, [city, propertyType, status, timeline, search, allBuyers]);
 
 
-
-
-
-
   const viewOrEditBuyer = (buyer)=>{
     navigate(`/buyers/${buyer?.id}`,{state:buyer})
   }
@@ -71,10 +89,10 @@ export default function AgentDashboard() {
 
   const getAllBuyers = async()=>{
     try{
-      if(allBuyers) return ;
       dispatch(setLoading(true))
-      const result = await apiConnector("GET",buyerEndpoints.GET_ALL_BUYERS)
-      dispatch(setAllBuyers(result?.data?.allBuyers))
+      const result = await apiConnector("GET",`${buyerEndpoints.GET_ALL_BUYERS}?q=${page}&pageSize=${pageSize}`)
+      dispatch(setAllBuyers(result?.data?.buyers))
+      dispatch(setPaginationData(result?.data?.pagination))
       dispatch(setLoading(false))
     }
     catch(error){
@@ -86,6 +104,9 @@ export default function AgentDashboard() {
 
   useEffect(()=>{
     getAllBuyers();
+  },[fetchAgain,page,pageSize])
+  
+  useEffect(()=>{
     getUserDetails()
   },[])
 
@@ -172,9 +193,10 @@ export default function AgentDashboard() {
           <button onClick={()=>navigate("/buyers/new")} className="flex items-center gap-1 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">
             <PlusCircle size={18} /> Add Buyer
           </button>
-          <button className="flex items-center gap-1 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700">
-            <Upload size={18} /> Import CSV
-          </button>
+          <label htmlFor="fileUpload" className="flex cursor-pointer items-center gap-1 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700">
+              <Upload size={18} /> Import CSV
+          </label>
+          <input type="file" name="fileUpload" id="fileUpload" onChange={(e)=>handleImport(e)} className="hidden" />
           <button onClick={()=>exportCsv({city,status,propertyType,timeline,search})} className="flex items-center gap-1 bg-gray-700 text-white px-4 py-2 rounded-lg hover:bg-gray-800">
             <Download size={18} /> Export CSV
           </button>
@@ -184,7 +206,7 @@ export default function AgentDashboard() {
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
         {[
-          { label: "Total Leads", value: allBuyers?.length||"120", icon: Users, color: "bg-blue-100 text-blue-600" },
+          { label: "Total Leads", value: paginationData?.totalCount||"120", icon: Users, color: "bg-blue-100 text-blue-600" },
           { label: "New This Week", value: "15", icon: PlusCircle, color: "bg-green-100 text-green-600" },
           { label: "Converted", value: "45", icon: FileText, color: "bg-purple-100 text-purple-600" },
           { label: "Active", value: "60", icon: Activity, color: "bg-orange-100 text-orange-600" },
@@ -211,7 +233,7 @@ export default function AgentDashboard() {
       <motion.div
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
-        transition={{ duration: 0.4 }}
+        transition={{ duration: 0.1 }}
         className="bg-white rounded-2xl shadow-md p-6 mb-8"
       >
         <h2 className="text-xl font-semibold mb-4">Buyers List</h2>
@@ -238,19 +260,19 @@ export default function AgentDashboard() {
                 (
                   <tr>
                     <td
-                      colSpan="10" // 👈 span across all columns
+                      colSpan="10" 
                       className="text-center p-4 bg-green-100 text-gray-700 font-medium"
                     >
                       No Buyer found
                     </td>
                   </tr>
                 ):
-                filteredBuyers?.map((buyer, i) => (
+                filteredBuyers?.slice(0,10)?.map((buyer, i) => (
                   <motion.tr
                     key={i}
                     initial={{ opacity: 0, x: -20 }}
                     animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: i * 0.2 }}
+                    transition={{ delay: i * 0.1 }}
                     className="border-b hover:bg-gray-50 transition"
                   >
                     <td className="p-3">{buyer.fullName}</td>
@@ -275,35 +297,68 @@ export default function AgentDashboard() {
               }
             </tbody>
           </table>
+
+
+          <div className="flex flex-col sm:flex-row justify-between items-center mt-6 gap-4 px-4 py-2">
+
+            <div className="flex items-center gap-2 text-gray-600">
+              <span className="font-medium">Go to page:</span>
+              <select
+                value={page}
+                onChange={(e) => setPage(Number(e.target.value))}
+                className="px-2 py-1 border border-gray-300 rounded-lg shadow-sm bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                {Array.from({ length: paginationData?.totalPages || 1 }, (_, i) => (
+                  <option key={i + 1} value={i + 1}>
+                    {i + 1}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setPage(page - 1)}
+                disabled={page === 1}
+                className="flex cursor-pointer items-center gap-1 px-3 py-2 rounded-full border border-gray-300 bg-white text-gray-600 hover:bg-gray-100 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed transition"
+              >
+                <ChevronLeft size={16} />
+                <span className="hidden sm:inline">Prev</span>
+              </button>
+
+              <span className="px-4 py-2 rounded-full bg-blue-600 text-white font-semibold shadow">
+                {page} / {paginationData?.totalPages || 1}
+              </span>
+
+              <button
+                onClick={() => setPage(page + 1)}
+                disabled={paginationData?.totalPages === page}
+                className="flex cursor-pointer items-center gap-1 px-3 py-2 rounded-full border border-gray-300 bg-white text-gray-600 hover:bg-gray-100 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed transition"
+              >
+                <span className="hidden sm:inline">Next</span>
+                <ChevronRight size={16} />
+              </button>
+            </div>
+
+            <div className="flex items-center gap-2  text-gray-600">
+              <span className="font-medium">Page size:</span>
+              <select
+                value={pageSize}
+                onChange={(e) => setPageSize(Number(e.target.value))}
+                className="px-2 py-1 border border-gray-300 rounded-lg shadow-sm bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value={5}>5</option>
+                <option value={10}>10</option>
+                <option value={15}>15</option>
+                <option value={20}>20</option>
+              </select>
+            </div>
+          </div>
+
+
         </div>
       </motion.div>
 
-      {/* Activity Section */}
-      <motion.div
-        initial={{ opacity: 0, y: 30 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4 }}
-        className="bg-white rounded-2xl shadow-md p-6"
-      >
-        <h2 className="text-xl font-semibold mb-4">Recent Activity</h2>
-        <ul className="space-y-3">
-          {[
-            "Added new buyer: Amit Sharma",
-            "Updated status: Priya Verma → Contacted",
-            "Imported 10 new leads via CSV",
-          ].map((activity, i) => (
-            <motion.li
-              key={i}
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: i * 0.2 }}
-              className="text-gray-600 text-sm"
-            >
-              • {activity}
-            </motion.li>
-          ))}
-        </ul>
-      </motion.div>
     </div>
   );
 }

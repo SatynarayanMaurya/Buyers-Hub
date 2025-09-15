@@ -2,12 +2,13 @@ import React, { useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import {toast} from "react-toastify"
-import { clearAllBuyers, setLoading } from "../../redux/userSlice";
+import { clearAllBuyers, setLoading, setUserDetails } from "../../redux/userSlice";
 import { apiConnector } from "../../services/apiConnector";
-import { buyerEndpoints } from "../../services/apis";
+import { agentEndpoints, buyerEndpoints } from "../../services/apis";
 import Spinner from "../Spinner";
 import { useEffect } from "react";
 import { useRef } from "react";
+import BuyerHistory from "./BuyerHistory";
 
 const UpdateBuyerForm = () => {
   const {id} = useParams()
@@ -19,6 +20,44 @@ const UpdateBuyerForm = () => {
   const userDetails = useSelector((state)=>state.user.userDetails)
 
   const toastShown = useRef(false);
+  const [history,setHistory] = useState([])
+
+  const getUserDetails = async()=>{
+    try{
+      if(userDetails) return ;
+      dispatch(setLoading(true))
+      const result = await apiConnector("GET",agentEndpoints.GET_USER_DETAILS)
+      dispatch(setUserDetails(result?.data?.userDetails))
+    }
+    catch(error){
+      toast.error(error?.response?.data?.message || error.message || "Error in getting the agent details")
+    }
+    finally{
+      dispatch(setLoading(false))
+    }
+  }
+
+  useEffect(()=>{
+    getUserDetails();
+  },[])
+
+  const getBuyerHistory = async()=>{
+    try{
+      dispatch(setLoading(true))
+      const result = await apiConnector("GET",`${buyerEndpoints.GET_BUYER_HISTORY}/${id}`)
+      setHistory(result?.data?.history)
+      dispatch(setLoading(false))
+    }
+    catch(error){
+      console.log("Error in getting the buyer history : ",error)
+      dispatch(setLoading(false))
+      toast.error(error?.response?.data?.message || error.message || "Error in getting the buyer history")
+    }
+  }
+
+  useEffect(()=>{
+    getBuyerHistory()
+  },[])
 
   useEffect(() => {
     if (!toastShown.current && buyerDetails && userDetails) {
@@ -40,8 +79,8 @@ const UpdateBuyerForm = () => {
     propertyType: buyerDetails?.propertyType || "Apartment",
     bhk:  buyerDetails?.bhk || "",
     purpose:  buyerDetails?.purpose || "Buy",
-    budgetMin:  buyerDetails?.budgetMin || "",
-    budgetMax:  buyerDetails?.budgetMax || "",
+    budgetMin:  buyerDetails?.budgetMin || 0,
+    budgetMax:  buyerDetails?.budgetMax || 0,
     timeline:  buyerDetails?.timeline || "0-3m",
     source: buyerDetails?.source || "Website",
     status: buyerDetails?.status || "New",
@@ -51,7 +90,14 @@ const UpdateBuyerForm = () => {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
+      let finalValue = value;
+
+      // Convert specific fields to number
+      if (["budgetMin", "budgetMax"].includes(name)) {
+        finalValue = value === "" ? "" : Number(value); 
+      }
+
+      setFormData((prev) => ({ ...prev, [name]: finalValue }));
 
     if (["fullName", "bhk","budgetMin","budgetMax","phone"].includes(name) && value?.length > 0) {
       setErrors((prev) => {
@@ -67,7 +113,6 @@ const UpdateBuyerForm = () => {
   const handleSubmit =async (e) => {
     e.preventDefault();
 
-    console.log("Submit")
     const newErrors = {};
 
     if (!formData.fullName.trim()) newErrors.fullName = "Full name is required";
@@ -107,6 +152,7 @@ const UpdateBuyerForm = () => {
     catch(error){
       dispatch(setLoading(false))
       toast.error(error?.response?.data?.message || error.message || "Error in updating the buyer details")
+      console.log("Error : ",error)
     }
 
   };
@@ -114,9 +160,7 @@ const UpdateBuyerForm = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50 py-4 px-4">
       {loading && <Spinner/>}
-      <div className="max-w-6xl mx-auto">
-        {/* Header Section */}
-        <div className="text-center mb-6">
+              <div className="text-center my-2">
           <div className="inline-flex items-center justify-center w-12 h-12 bg-gradient-to-r from-green-600 to-emerald-600 rounded-full mb-2 shadow-lg">
             <span className="text-xl">✏️</span>
           </div>
@@ -127,6 +171,10 @@ const UpdateBuyerForm = () => {
             Modify the details to update this buyer in your database
           </p>
         </div>
+      <BuyerHistory history={history}/>
+      <div className="max-w-6xl mx-auto mt-6">
+        {/* Header Section */}
+
 
 
         {/* Form Container */}
@@ -391,7 +439,7 @@ const UpdateBuyerForm = () => {
                     name="budgetMax"
                     placeholder="10,000,000"
                     value={formData.budgetMax}
-                    onChange={handleChange}
+                    onChange={(e)=>handleChange(e)}
                     readOnly={buyerDetails?.ownerId !== userDetails?.id}
                     className={`w-full border ${
                       errors.budgetMax ? "border-red-500" : "border-gray-200"
@@ -561,6 +609,8 @@ const UpdateBuyerForm = () => {
           </form>
         </div>
       </div>
+
+
     </div>
   );
 };

@@ -5,7 +5,7 @@ import { loginSchema } from "../validation/userSchemas";
 import {toast} from "react-toastify"
 import { apiConnector } from "../services/apiConnector";
 import { authEndpoints } from "../services/apis";
-import {useNavigate} from "react-router-dom"
+import {useLocation, useNavigate} from "react-router-dom"
 import Spinner from "../components/Spinner";
 import { useDispatch, useSelector } from "react-redux";
 import { setLoading, setUserDetails } from "../redux/userSlice";
@@ -13,11 +13,13 @@ import { setLoading, setUserDetails } from "../redux/userSlice";
 export default function Login() {
 
   const navigate = useNavigate();
+  const location = useLocation();
   const loading = useSelector((state)=>state.user.loading)
   const dispatch = useDispatch()
+  const {emailOrPhone,password} = location.state||{};
   const [formData, setFormData] = useState({
-    password: "",
-    emailOrPhone:""
+    password: password||"",
+    emailOrPhone:emailOrPhone||""
   });
 
   const [errors, setErrors] = useState({}); // store field errors

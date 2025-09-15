@@ -73,7 +73,7 @@ export const login = async (req, res) => {
 
 
     if (!user) {
-      return res.status(400).json({ message: "Invalid credentials" });
+      return res.status(400).json({ message: "User is not registered" });
     }
 
     const {password:_,...userDetails} = user;

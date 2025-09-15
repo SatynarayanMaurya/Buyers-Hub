@@ -5,7 +5,8 @@ import { act } from "react";
 const initialState = {
     loading :false,
     userDetails:null,
-    allBuyers:null
+    allBuyers:null,
+    paginationData:null
 }
 
 
@@ -29,10 +30,16 @@ const userSlice = createSlice({
         },
         clearAllBuyers :(state,action)=>{
             state.allBuyers = null
+        },
+        setPaginationData:(state,action)=>{
+            state.paginationData = action.payload
+        },
+        clearPaginationData:(state,action)=>{
+            state.paginationData = null
         }
     }
 })
 
 
-export const {setLoading,setUserDetails,clearUserDetails,setAllBuyers,clearAllBuyers} = userSlice.actions;
+export const {setLoading,setUserDetails,clearUserDetails,setAllBuyers,clearAllBuyers,setPaginationData,clearPaginationData} = userSlice.actions;
 export default userSlice.reducer;

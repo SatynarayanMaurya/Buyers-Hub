@@ -14,9 +14,14 @@ export const importBuyers = async (req, res) => {
       return res.status(400).json({ message: "CSV file required (field name: file)" });
     }
 
+    console.log("FIles : ",req.file)
+
     // read file buffer (multer gives buffer if storage memory)
     const csvBuffer = req.file.buffer;
+
+    console.log("CSV BUffer : ",csvBuffer)
     const text = csvBuffer.toString("utf8");
+    console.log("Extracted text : ",text)
 
     // parse CSV synchronously - returns array of objects if columns: true
     const records = parse(text, {
@@ -25,13 +30,15 @@ export const importBuyers = async (req, res) => {
       trim: true
     });
 
+    console.log("Records : ",records)
+
     // check header keys (first record keys)
     const headerKeys = Object.keys(records[0] || {});
     const missing = csvHeaders.filter(h => !headerKeys.includes(h));
     if (missing.length > 0) {
       return res.status(400).json({ message: "Invalid CSV headers", missing });
     }
-
+    console.log("Header key : ",headerKeys)
     // enforce max rows
     if (records.length === 0) {
       return res.status(400).json({ message: "CSV contains no rows" });
@@ -116,6 +123,6 @@ export const importBuyers = async (req, res) => {
 
   } catch (err) {
     console.error("Import error:", err);
-    return res.status(500).json({ message: "CSV import failed" });
+    return res.status(500).json({ message:err.message ||  "CSV import failed" });
   }
 };
