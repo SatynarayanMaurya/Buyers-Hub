@@ -43,7 +43,7 @@ enum Purpose {
 enum Source {
   Website
   Referral
-  Walk_in
+  Walk-in
   Call
   Other
 }
