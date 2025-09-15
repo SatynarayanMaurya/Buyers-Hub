@@ -7,6 +7,8 @@ import { toast } from "react-toastify";
 import { setAllBuyers, setLoading, setUserDetails } from "../../redux/userSlice";
 import { apiConnector } from "../../services/apiConnector";
 import { agentEndpoints, buyerEndpoints } from "../../services/apis";
+import Spinner from "../Spinner";
+import { exportCsv } from "../ExportAndImportFile";
 
 export default function AgentDashboard() {
   const [search, setSearch] = useState("");
@@ -16,8 +18,40 @@ export default function AgentDashboard() {
   const dispatch = useDispatch()
   const allBuyers = useSelector((state)=>state.user.allBuyers)
 
+  const [city,setCity] = useState("")
+  const [propertyType,setPropertyType] = useState("")
+  const [status,setStatus] = useState("")
+  const [timeline, setTimeline] = useState("")
+
+  const [filteredBuyers, setFilteredBuyers] = useState([])
+
+  useEffect(() => {
+    const filterBuyers = allBuyers?.filter((buyer) => {
+      const matchesSearch =
+        search === "" ||
+        buyer.fullName?.toLowerCase().includes(search.toLowerCase()) ||
+        buyer.email?.toLowerCase().includes(search.toLowerCase()) ||
+        buyer.phone?.includes(search);
+
+      return (
+        matchesSearch &&
+        (city === "" || buyer.city === city) &&
+        (propertyType === "" || buyer.propertyType === propertyType) &&
+        (status === "" || buyer.status === status) &&
+        (timeline === "" || buyer.timeline === timeline)
+      );
+    });
+
+    setFilteredBuyers(filterBuyers);
+  }, [city, propertyType, status, timeline, search, allBuyers]);
+
+
+
+
+
+
   const viewOrEditBuyer = (buyer)=>{
-    navigate(`/buyers/${buyer?._id}`,{state:buyer})
+    navigate(`/buyers/${buyer?.id}`,{state:buyer})
   }
 
   const getUserDetails = async()=>{
@@ -26,14 +60,12 @@ export default function AgentDashboard() {
       dispatch(setLoading(true))
       const result = await apiConnector("GET",agentEndpoints.GET_USER_DETAILS)
       dispatch(setUserDetails(result?.data?.userDetails))
-      toast.success(result?.data?.message)
     }
     catch(error){
       toast.error(error?.response?.data?.message || error.message || "Error in getting the agent details")
     }
     finally{
       dispatch(setLoading(false))
-
     }
   }
 
@@ -59,6 +91,7 @@ export default function AgentDashboard() {
 
   return (
     <div className="min-h-screen bg-gray-50 p-6">
+      {loading && <Spinner/>}
 
       <motion.div
         initial={{ opacity: 0, y: -20 }}
@@ -99,15 +132,15 @@ export default function AgentDashboard() {
 
         {/* Filters */}
         <div className="flex gap-2">
-          <select className="border border-gray-300 rounded-lg px-2 py-2">
+          <select value={city} onChange={(e)=>setCity(e.target.value)} className="border border-gray-300 rounded-lg px-2 py-2">
             <option value="">City</option>
-            <option>Chandigarh</option>
+            <option >Chandigarh</option>
             <option>Mohali</option>
             <option>Zirakpur</option>
             <option>Panchkula</option>
             <option>Other</option>
           </select>
-          <select className="border border-gray-300 rounded-lg px-2 py-2">
+          <select value={propertyType} onChange={(e)=>setPropertyType(e.target.value)}  className="border border-gray-300 rounded-lg px-2 py-2">
             <option value="">Property Type</option>
             <option>Apartment</option>
             <option>Villa</option>
@@ -115,7 +148,7 @@ export default function AgentDashboard() {
             <option>Office</option>
             <option>Retail</option>
           </select>
-          <select className="border border-gray-300 rounded-lg px-2 py-2">
+          <select value={status} onChange={(e)=>setStatus(e.target.value)}  className="border border-gray-300 rounded-lg px-2 py-2">
             <option value="">Status</option>
             <option>New</option>
             <option>Qualified</option>
@@ -125,7 +158,7 @@ export default function AgentDashboard() {
             <option>Converted</option>
             <option>Dropped</option>
           </select>
-          <select className="border border-gray-300 rounded-lg px-2 py-2">
+          <select value={timeline} onChange={(e)=>setTimeline(e.target.value)} className="border border-gray-300 rounded-lg px-2 py-2">
             <option value="">Timeline</option>
             <option>0-3m</option>
             <option>3-6m</option>
@@ -142,7 +175,7 @@ export default function AgentDashboard() {
           <button className="flex items-center gap-1 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700">
             <Upload size={18} /> Import CSV
           </button>
-          <button className="flex items-center gap-1 bg-gray-700 text-white px-4 py-2 rounded-lg hover:bg-gray-800">
+          <button onClick={()=>exportCsv({city,status,propertyType,timeline,search})} className="flex items-center gap-1 bg-gray-700 text-white px-4 py-2 rounded-lg hover:bg-gray-800">
             <Download size={18} /> Export CSV
           </button>
         </div>
@@ -151,7 +184,7 @@ export default function AgentDashboard() {
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
         {[
-          { label: "Total Leads", value: "120", icon: Users, color: "bg-blue-100 text-blue-600" },
+          { label: "Total Leads", value: allBuyers?.length||"120", icon: Users, color: "bg-blue-100 text-blue-600" },
           { label: "New This Week", value: "15", icon: PlusCircle, color: "bg-green-100 text-green-600" },
           { label: "Converted", value: "45", icon: FileText, color: "bg-purple-100 text-purple-600" },
           { label: "Active", value: "60", icon: Activity, color: "bg-orange-100 text-orange-600" },
@@ -195,36 +228,51 @@ export default function AgentDashboard() {
                 <th className="p-3 font-medium text-gray-700">Purpose</th>
                 <th className="p-3 font-medium text-gray-700">Status</th>
                 <th className="p-3 font-medium text-gray-700">UpdatedAt</th>
+                <th className="p-3 font-medium text-gray-700">Created By</th>
                 <th className="p-3 font-medium text-gray-700">Action</th>
               </tr>
             </thead>
             <tbody>
-              {allBuyers?.map((buyer, i) => (
-                <motion.tr
-                  key={i}
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: i * 0.2 }}
-                  className="border-b hover:bg-gray-50 transition"
-                >
-                  <td className="p-3">{buyer.fullName}</td>
-                  <td className="p-3">{buyer.phone}</td>
-                  <td className="p-3">{buyer.city}</td>
-                  <td className="p-3">{buyer.propertyType}</td>
-                  <td className="p-3">{buyer.budgetMin}-{buyer.budgetMax}</td>
-                  <td className="p-3">{buyer.timeline}</td>
-                  <td className="p-3">{buyer.purpose}</td>
-                  <td className="p-3">
-                    <span className="px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-600">
-                      {buyer.status}
-                    </span>
-                  </td>
-                  <td className="p-3">{buyer.updatedAt}</td>
-                  <td onClick={()=>viewOrEditBuyer(buyer)} className="p-3">
-                    <button className="text-blue-600 hover:underline cursor-pointer">View / Edit</button>
-                  </td>
-                </motion.tr>
-              ))}
+              {
+                filteredBuyers?.length ===0 ?
+                (
+                  <tr>
+                    <td
+                      colSpan="10" // 👈 span across all columns
+                      className="text-center p-4 bg-green-100 text-gray-700 font-medium"
+                    >
+                      No Buyer found
+                    </td>
+                  </tr>
+                ):
+                filteredBuyers?.map((buyer, i) => (
+                  <motion.tr
+                    key={i}
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: i * 0.2 }}
+                    className="border-b hover:bg-gray-50 transition"
+                  >
+                    <td className="p-3">{buyer.fullName}</td>
+                    <td className="p-3">{buyer.phone}</td>
+                    <td className="p-3">{buyer.city}</td>
+                    <td className="p-3">{buyer.propertyType}</td>
+                    <td className="p-3">{buyer.budgetMin}-{buyer.budgetMax}</td>
+                    <td className="p-3">{buyer.timeline}</td>
+                    <td className="p-3">{buyer.purpose}</td>
+                    <td className="p-3">
+                      <span className="px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-600">
+                        {buyer.status}
+                      </span>
+                    </td>
+                    <td className="p-3">{buyer.updatedAt}</td>
+                    <td className="p-3">{buyer.ownerId === userDetails?.id ? <span className="px-2 py-1 rounded-full text-green-600 bg-green-100">You</span> :<span className="px-2 py-1 rounded-full text-yellow-600 bg-yellow-100">Other</span>}</td>
+                    <td onClick={()=>viewOrEditBuyer(buyer)} className="p-3">
+                      <button className="text-blue-600 hover:underline cursor-pointer">View / Edit</button>
+                    </td>
+                  </motion.tr>
+                ))
+              }
             </tbody>
           </table>
         </div>

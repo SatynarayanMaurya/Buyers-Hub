@@ -9,7 +9,11 @@ export const authEndpoints = {
 
 export const buyerEndpoints = {
     GET_ALL_BUYERS : BASE_URL + "/api/buyers/get-all-buyers",
-    CREATE_BUYER : BASE_URL + "/api/buyers/create-buyer"
+    CREATE_BUYER : BASE_URL + "/api/buyers/create-buyer",
+    UPDATE_BUYER : BASE_URL + "/api/buyers/update-buyer",
+    EXPORT_CSV : BASE_URL + "/api/buyers/export-buyers",
+    IMPORT_CSV : BASE_URL + "/api/buyers/import-buyers",
+
 }
 
 export const agentEndpoints ={

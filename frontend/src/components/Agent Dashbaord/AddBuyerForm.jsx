@@ -1,11 +1,14 @@
 import React, { useState } from "react";
 import {toast} from "react-toastify"
 import {useDispatch, useSelector} from "react-redux"
-import { setLoading } from "../../redux/userSlice";
+import { clearAllBuyers, setLoading } from "../../redux/userSlice";
 import { apiConnector } from "../../services/apiConnector";
 import { buyerEndpoints } from "../../services/apis";
+import { useNavigate } from "react-router-dom";
+import Spinner from "../Spinner";
 
 const AddBuyerForm = () => {
+  const navigate = useNavigate();
   const loading = useSelector((state)=>state.user.loading)
   const dispatch = useDispatch()
   const [formData, setFormData] = useState({
@@ -51,7 +54,7 @@ const handleChange = (e) => {
     } else if (!/^\d{10,15}$/.test(formData.phone)) {
       newErrors.phone = "Phone must be 10–15 digits";
     }
-    if (!formData.bhk) newErrors.bhk = "BHK is required";
+    if (!formData.bhk && (formData?.propertyType==="Apartment" || formData?.propertyType === "Villa")) newErrors.bhk = "BHK is required";
 
     if (!formData.budgetMin) newErrors.budgetMin = "Minimum budget is required";
     if (!formData.budgetMax) newErrors.budgetMax = "Maximum budget is required";
@@ -64,6 +67,7 @@ const handleChange = (e) => {
     }
 
     setErrors(newErrors);
+    console.log("New errors : ",newErrors)
 
     if (Object.keys(newErrors).length > 0) {
       toast.warn("Please fix the errors before submitting.") 
@@ -76,6 +80,8 @@ const handleChange = (e) => {
       updatedAt: new Date().toISOString(),});
       toast.success(response?.data?.message)
       dispatch(setLoading(false))
+      dispatch(clearAllBuyers())
+      navigate("/buyers")
       
     }
     catch(error){
@@ -87,17 +93,18 @@ const handleChange = (e) => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50 py-12 px-4">
+    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50 py-4 px-4">
+      {loading && <Spinner/>}
       <div className="max-w-6xl mx-auto">
         {/* Header Section */}
-        <div className="text-center mb-12">
-          <div className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-r from-blue-600 to-purple-600 rounded-full mb-6 shadow-lg">
-            <span className="text-3xl">🏡</span>
+        <div className="text-center mb-6">
+          <div className="inline-flex items-center justify-center w-12 h-12 bg-gradient-to-r from-blue-600 to-purple-600 rounded-full mb-2 shadow-lg">
+            <span className="text-xl">🏡</span>
           </div>
-          <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent mb-4">
+          <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent mb-2">
             Add New Buyer
           </h1>
-          <p className="text-gray-600 text-lg">Fill in the details to add a new buyer to your database</p>
+          <p className="text-gray-600 ">Fill in the details to add a new buyer to your database</p>
         </div>
 
         {/* Form Container */}

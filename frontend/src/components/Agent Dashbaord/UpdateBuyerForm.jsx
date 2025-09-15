@@ -1,11 +1,37 @@
 import React, { useState } from "react";
-import { useLocation, useParams } from "react-router-dom";
+import { useDispatch, useSelector } from "react-redux";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 import {toast} from "react-toastify"
+import { clearAllBuyers, setLoading } from "../../redux/userSlice";
+import { apiConnector } from "../../services/apiConnector";
+import { buyerEndpoints } from "../../services/apis";
+import Spinner from "../Spinner";
+import { useEffect } from "react";
+import { useRef } from "react";
 
 const UpdateBuyerForm = () => {
+  const {id} = useParams()
   const location = useLocation()
+  const dispatch = useDispatch();
+  const loading = useSelector((state)=>state.user.loading)
+  const navigate = useNavigate()
   const buyerDetails = location.state
-  console.log("buyer details : ",buyerDetails)
+  const userDetails = useSelector((state)=>state.user.userDetails)
+
+  const toastShown = useRef(false);
+
+  useEffect(() => {
+    if (!toastShown.current && buyerDetails && userDetails) {
+      if (buyerDetails.ownerId === userDetails.id) {
+        toast.success("✅ You are allowed to edit this buyer's details.");
+      } else {
+        toast.warn("⚠ Editing restricted. You do not own this buyer..");
+      }
+      toastShown.current = true; // prevent further toasts
+    }
+  }, [buyerDetails, userDetails]);
+
+
   const [formData, setFormData] = useState({
     fullName: buyerDetails?.fullName || "",
     email: buyerDetails?.email || "",
@@ -20,26 +46,28 @@ const UpdateBuyerForm = () => {
     source: buyerDetails?.source || "Website",
     status: buyerDetails?.status || "New",
     notes:  buyerDetails?.notes || "",
-    tags:  buyerDetails?.tags || "",
+    tags:  buyerDetails?.tags?.join(", ") || "",
   });
 
-const handleChange = (e) => {
-  const { name, value } = e.target;
-  setFormData((prev) => ({ ...prev, [name]: value }));
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
 
-  if (["fullName", "bhk","budgetMin","budgetMax","phone"].includes(name) && value?.length > 0) {
-    setErrors((prev) => {
-      const { [name]: _, ...rest } = prev;
-      return rest;
-    });
-  }
-};
+    if (["fullName", "bhk","budgetMin","budgetMax","phone"].includes(name) && value?.length > 0) {
+      setErrors((prev) => {
+        const { [name]: _, ...rest } = prev;
+        return rest;
+      });
+    }
+  };
 
 
   const [errors, setErrors] = useState({});
-  const handleSubmit = (e) => {
+
+  const handleSubmit =async (e) => {
     e.preventDefault();
 
+    console.log("Submit")
     const newErrors = {};
 
     if (!formData.fullName.trim()) newErrors.fullName = "Full name is required";
@@ -48,7 +76,7 @@ const handleChange = (e) => {
     } else if (!/^\d{10,15}$/.test(formData.phone)) {
       newErrors.phone = "Phone must be 10–15 digits";
     }
-    if (!formData.bhk) newErrors.bhk = "BHK is required";
+    if (!formData.bhk && (formData?.propertyType === "Apartment" || formData?.propertyType === "Villa")) newErrors.bhk = "BHK is required";
 
     if (!formData.budgetMin) newErrors.budgetMin = "Minimum budget is required";
     if (!formData.budgetMax) newErrors.budgetMax = "Maximum budget is required";
@@ -66,29 +94,40 @@ const handleChange = (e) => {
       toast.warn("Please fix the errors before submitting.") 
       return;
     }
+    
+    try{
+      dispatch(setLoading(true))
+      const result = await apiConnector("PUT",`${buyerEndpoints.UPDATE_BUYER}/${id}`,{...formData,tags: formData.tags.split(",").map((tag) => tag.trim()),
+      updatedAt: new Date().toISOString(),})
+      toast.success(result?.data?.message )
+      dispatch(setLoading(false))
+      dispatch(clearAllBuyers())
+      navigate("/buyers")
+    }
+    catch(error){
+      dispatch(setLoading(false))
+      toast.error(error?.response?.data?.message || error.message || "Error in updating the buyer details")
+    }
 
-    console.log("New Buyer:", {
-      ...formData,
-      tags: formData.tags.split(",").map((tag) => tag.trim()),
-      updatedAt: new Date().toISOString(),
-    });
-
-    toast.success("Buyer submitted! Check console.");
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50 py-12 px-4">
+    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50 py-4 px-4">
+      {loading && <Spinner/>}
       <div className="max-w-6xl mx-auto">
         {/* Header Section */}
-        <div className="text-center mb-12">
-          <div className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-r from-blue-600 to-purple-600 rounded-full mb-6 shadow-lg">
-            <span className="text-3xl">🏡</span>
+        <div className="text-center mb-6">
+          <div className="inline-flex items-center justify-center w-12 h-12 bg-gradient-to-r from-green-600 to-emerald-600 rounded-full mb-2 shadow-lg">
+            <span className="text-xl">✏️</span>
           </div>
-          <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent mb-4">
-            Add New Buyer
+          <h1 className="text-3xl font-bold bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent mb-2">
+            Update Buyer
           </h1>
-          <p className="text-gray-600 text-lg">Fill in the details to add a new buyer to your database</p>
+          <p className="text-gray-600">
+            Modify the details to update this buyer in your database
+          </p>
         </div>
+
 
         {/* Form Container */}
         <div className="bg-white/80 backdrop-blur-sm shadow-2xl rounded-3xl p-8 border border-white/20">
@@ -115,10 +154,14 @@ const handleChange = (e) => {
                     placeholder="John Doe"
                     value={formData.fullName}
                     onChange={handleChange}
+                    readOnly={buyerDetails?.ownerId !== userDetails?.id}
                     className={`w-full border ${
-                        errors.fullName ? "border-red-500" : "border-gray-200"
-                    } rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-blue-500`}
-                    
+                      errors.fullName ? "border-red-500" : "border-gray-200"
+                    } rounded-lg p-3 ${
+                      buyerDetails?.ownerId !== userDetails?.id
+                        ? "bg-gray-100 cursor-not-allowed focus:outline-none" // read-only styles
+                        : "focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    }`}
                   />
                   {errors.fullName && (
                     <p className="text-red-500 text-sm ">{errors.fullName}</p>
@@ -137,7 +180,14 @@ const handleChange = (e) => {
                     placeholder="john@example.com"
                     value={formData.email}
                     onChange={handleChange}
-                    className="w-full p-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all duration-300 bg-white/60 backdrop-blur-sm hover:bg-white/80"
+                    readOnly={buyerDetails?.ownerId !== userDetails?.id}
+                    className={`w-full border ${
+                      errors.email ? "border-red-500" : "border-gray-200"
+                    } rounded-lg p-3 ${
+                      buyerDetails?.ownerId !== userDetails?.id
+                        ? "bg-gray-100 cursor-not-allowed focus:outline-none" // read-only styles
+                        : "focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    }`}
                   />
                 </div>
 
@@ -153,9 +203,14 @@ const handleChange = (e) => {
                     placeholder="9876543210"
                     value={formData.phone}
                     onChange={handleChange}
+                    readOnly={buyerDetails?.ownerId !== userDetails?.id}
                     className={`w-full border ${
-                        errors.phone ? "border-red-500" : "border-gray-200"
-                    } rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-blue-500`}
+                      errors.phone ? "border-red-500" : "border-gray-200"
+                    } rounded-lg p-3 ${
+                      buyerDetails?.ownerId !== userDetails?.id
+                        ? "bg-gray-100 cursor-not-allowed focus:outline-none" // read-only styles
+                        : "focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    }`}
                         
                     />
                     {errors.phone && (
@@ -185,7 +240,14 @@ const handleChange = (e) => {
                     name="city"
                     value={formData.city}
                     onChange={handleChange}
-                    className="w-full p-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all duration-300 bg-white/60 backdrop-blur-sm hover:bg-white/80"
+                    disabled={buyerDetails?.ownerId !== userDetails?.id}
+                    className={`w-full border ${
+                      errors.city ? "border-red-500" : "border-gray-200"
+                    } rounded-lg p-3 ${
+                      buyerDetails?.ownerId !== userDetails?.id
+                        ? "bg-gray-100 cursor-not-allowed focus:outline-none appearance-none" // read-only styles
+                        : "focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    }`}
                   >
                     <option>Chandigarh</option>
                     <option>Mohali</option>
@@ -205,7 +267,14 @@ const handleChange = (e) => {
                     name="propertyType"
                     value={formData.propertyType}
                     onChange={handleChange}
-                    className="w-full p-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all duration-300 bg-white/60 backdrop-blur-sm hover:bg-white/80"
+                    disabled={buyerDetails?.ownerId !== userDetails?.id}
+                    className={`w-full border ${
+                      errors.propertyType ? "border-red-500" : "border-gray-200"
+                    } rounded-lg p-3 ${
+                      buyerDetails?.ownerId !== userDetails?.id
+                        ? "bg-gray-100 cursor-not-allowed focus:outline-none appearance-none" // read-only styles
+                        : "focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    }`}
                   >
                     <option>Apartment</option>
                     <option>Villa</option>
@@ -226,10 +295,14 @@ const handleChange = (e) => {
                       name="bhk"
                       value={formData.bhk}
                       onChange={handleChange}
-                    //   className="w-full p-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all duration-300 bg-white/60 backdrop-blur-sm hover:bg-white/80"
-                    className={`w-full border ${
-                        ((formData?.propertyType === "Apartment" || formData?.propertyType === "Villa") && errors.bhk) ? "border-red-500" : "border-gray-200"
-                    } rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-blue-500`}
+                      disabled={buyerDetails?.ownerId !== userDetails?.id}
+                      className={`w-full border ${
+                      ((formData?.propertyType === "Apartment" || formData?.propertyType === "Villa") && errors.bhk) ? "border-red-500" : "border-gray-200"
+                    } rounded-lg p-3 ${
+                      buyerDetails?.ownerId !== userDetails?.id
+                        ? "bg-gray-100 cursor-not-allowed focus:outline-none appearance-none" // read-only styles
+                        : "focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    }`}
                     >
                       <option value="">Select BHK</option>
                       <option>1</option>
@@ -256,7 +329,12 @@ const handleChange = (e) => {
                     name="purpose"
                     value={formData.purpose}
                     onChange={handleChange}
-                    className="w-full p-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all duration-300 bg-white/60 backdrop-blur-sm hover:bg-white/80"
+                    disabled={buyerDetails?.ownerId !== userDetails?.id}
+                    className={`w-full border border-gray-200 rounded-lg p-3 ${
+                      buyerDetails?.ownerId !== userDetails?.id
+                        ? "bg-gray-100 cursor-not-allowed focus:outline-none appearance-none" // read-only styles
+                        : "focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    }`}
                   >
                     <option>Buy</option>
                     <option>Rent</option>
@@ -287,9 +365,14 @@ const handleChange = (e) => {
                     placeholder="5,000,000"
                     value={formData.budgetMin}
                     onChange={handleChange}
+                    readOnly={buyerDetails?.ownerId !== userDetails?.id}
                     className={`w-full border ${
-                        errors.fullName ? "border-red-500" : "border-gray-200"
-                    } rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-blue-500`}
+                      errors.budgetMin ? "border-red-500" : "border-gray-200"
+                    } rounded-lg p-3 ${
+                      buyerDetails?.ownerId !== userDetails?.id
+                        ? "bg-gray-100 cursor-not-allowed focus:outline-none" // read-only styles
+                        : "focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    }`}
                         
                     />
                     {errors.budgetMin && (
@@ -309,9 +392,14 @@ const handleChange = (e) => {
                     placeholder="10,000,000"
                     value={formData.budgetMax}
                     onChange={handleChange}
+                    readOnly={buyerDetails?.ownerId !== userDetails?.id}
                     className={`w-full border ${
-                        errors.budgetMax ? "border-red-500" : "border-gray-200"
-                    } rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-blue-500`}
+                      errors.budgetMax ? "border-red-500" : "border-gray-200"
+                    } rounded-lg p-3 ${
+                      buyerDetails?.ownerId !== userDetails?.id
+                        ? "bg-gray-100 cursor-not-allowed focus:outline-none" // read-only styles
+                        : "focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    }`}
                         
                     />
                     {errors.budgetMax && (
@@ -329,7 +417,12 @@ const handleChange = (e) => {
                     name="timeline"
                     value={formData.timeline}
                     onChange={handleChange}
-                    className="w-full p-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all duration-300 bg-white/60 backdrop-blur-sm hover:bg-white/80"
+                    disabled={buyerDetails?.ownerId !== userDetails?.id}
+                    className={`w-full border border-gray-200 rounded-lg p-3 ${
+                      buyerDetails?.ownerId !== userDetails?.id
+                        ? "bg-gray-100 cursor-not-allowed focus:outline-none appearance-none" // read-only styles
+                        : "focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    }`}
                   >
                     <option value="0-3m">0-3 months</option>
                     <option value="3-6m">3-6 months</option>
@@ -360,7 +453,12 @@ const handleChange = (e) => {
                     name="source"
                     value={formData.source}
                     onChange={handleChange}
-                    className="w-full p-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all duration-300 bg-white/60 backdrop-blur-sm hover:bg-white/80"
+                    disabled={buyerDetails?.ownerId !== userDetails?.id}
+                    className={`w-full border border-gray-200 rounded-lg p-3 ${
+                      buyerDetails?.ownerId !== userDetails?.id
+                        ? "bg-gray-100 cursor-not-allowed focus:outline-none appearance-none" // read-only styles
+                        : "focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    }`}
                   >
                     <option>Website</option>
                     <option>Referral</option>
@@ -380,7 +478,12 @@ const handleChange = (e) => {
                     name="status"
                     value={formData.status}
                     onChange={handleChange}
-                    className="w-full p-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all duration-300 bg-white/60 backdrop-blur-sm hover:bg-white/80"
+                    disabled={buyerDetails?.ownerId !== userDetails?.id}
+                                        className={`w-full border border-gray-200 rounded-lg p-3 ${
+                      buyerDetails?.ownerId !== userDetails?.id
+                        ? "bg-gray-100 cursor-not-allowed focus:outline-none appearance-none" // read-only styles
+                        : "focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    }`}
                   >
                     <option>New</option>
                     <option>Qualified</option>
@@ -405,7 +508,13 @@ const handleChange = (e) => {
                   value={formData.notes}
                   onChange={handleChange}
                   maxLength={500}
-                  className="w-full p-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all duration-300 bg-white/60 backdrop-blur-sm hover:bg-white/80 h-28 resize-none"
+                  readOnly={buyerDetails?.ownerId !== userDetails?.id}
+                  // className="w-full p-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all duration-300 bg-white/60 backdrop-blur-sm hover:bg-white/80 h-28 resize-none"
+                  className={`w-full border border-gray-200 rounded-lg p-3 h-28 resize-none ${
+                      buyerDetails?.ownerId !== userDetails?.id
+                        ? "bg-gray-100 cursor-not-allowed focus:outline-none" // read-only styles
+                        : "focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    }`}
                 />
                 <div className="text-right text-sm text-gray-500">
                   {formData.notes.length}/500
@@ -424,7 +533,12 @@ const handleChange = (e) => {
                   placeholder="VIP, NRI, Investor, First-time buyer..."
                   value={formData.tags}
                   onChange={handleChange}
-                  className="w-full p-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all duration-300 bg-white/60 backdrop-blur-sm hover:bg-white/80"
+                  readOnly={buyerDetails?.ownerId !== userDetails?.id}
+                  className={`w-full border border-gray-200 rounded-lg p-3 ${
+                      buyerDetails?.ownerId !== userDetails?.id
+                        ? "bg-gray-100 cursor-not-allowed focus:outline-none" // read-only styles
+                        : "focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    }`}
                 />
                 <div className="text-sm text-gray-500">
                   Separate multiple tags with commas
@@ -437,10 +551,11 @@ const handleChange = (e) => {
               <button
               type="submit"
                 onClick={handleSubmit}
-                className="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white font-semibold py-4 px-8 rounded-xl hover:from-blue-700 hover:to-purple-700 transition-all duration-300 transform hover:scale-[1.02] shadow-lg hover:shadow-xl flex items-center justify-center space-x-3"
+                disabled={buyerDetails?.ownerId !== userDetails?.id}
+                className={`w-full ${buyerDetails?.ownerId !== userDetails?.id ?"cursor-not-allowed":"cursor-pointer"} bg-gradient-to-r from-green-300 via-pink-400 to-yellow-300 text-white font-semibold py-4 px-8 rounded-xl hover:from-blue-700 hover:to-purple-700 transition-all duration-300 transform hover:scale-[1.02] shadow-lg hover:shadow-xl flex items-center justify-center space-x-3`}
               >
                 <span className="text-xl">✨</span>
-                <span>Add Buyer to Database</span>
+                <span>Update Buyer to Database</span>
               </button>
             </div>
           </form>
